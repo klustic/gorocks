@@ -24,7 +24,7 @@ func connectTunnel(serverHost string) (conn net.Conn, err error) {
 }
 
 func main() {
-  tunnelAddr := flag.String("flag", "127.0.0.1:443", "The host:port address of the server")
+  tunnelAddr := flag.String("tunnel", "127.0.0.1:443", "The host:port address of the server")
   flag.Parse()
 
 	for {
