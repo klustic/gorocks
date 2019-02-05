@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/tls"
   "flag"
+	"fmt"
 	"log"
 	"net"
+	"os"
 
 	yamux "github.com/hashicorp/yamux"
 	utils "github.com/klustic/gorocks/utils"
@@ -27,6 +29,35 @@ func createTunnelServer(cert string, key string, host string) (server net.Listen
 	return
 }
 
+func HandleStats(session *yamux.Session, statPath string) {
+	// Set up the Unix socket
+	l, err := net.Listen("unix", statPath)
+	if err != nil {
+		fmt.Println("[ERR] Error listening on Unix socket: " + err.Error())
+		return
+	}
+	defer l.Close()
+	defer os.Remove(statPath)
+
+	// Wait for connections on the socket and serve stats
+	for {
+		fd, err := l.Accept()
+		if err != nil {
+			fmt.Println("[ERR] Error accepting on Unix socket: " + err.Error())
+				return
+		}
+
+		NumStreams := session.NumStreams()
+		rtt, _ := session.Ping()
+		msg := fmt.Sprintf("[GOROCKS Stats]\n---\n- Remote Tunnel Peer: %v\n- Round Trip Time: %v\n- Number of Streams: %d\n---\n", session.RemoteAddr(), rtt, NumStreams)
+
+		// Send the log message and close the file
+		fd.Write([]byte(msg))
+		fd.Close()
+	}
+	return
+}
+
 func handleConnection(conn net.Conn, socksHost string) {
 	// Wrap connection in yamux
 	session, err := yamux.Server(conn, nil)
@@ -36,6 +67,9 @@ func handleConnection(conn net.Conn, socksHost string) {
 	}
 	defer conn.Close()
 	defer session.Close()
+
+	// Run the statistics goroutine
+	go HandleStats(session, "/tmp/gorocks.sock")
 
 	// Listen on SOCKSv5 server port
 	socksServer, err := net.Listen("tcp", socksHost)
