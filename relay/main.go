@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"net"
-	"time"
 
 	socks5 "github.com/armon/go-socks5"
 	yamux "github.com/hashicorp/yamux"
@@ -24,20 +23,11 @@ func connectTunnel(serverHost string) (conn net.Conn, err error) {
 	return
 }
 
-func SendKeepalives(session *yamux.Session) {
-	duration, _ := time.ParseDuration("1m")
-	for {
-		time.Sleep(duration)
-		stream, _ := session.Open()
-		stream.Write([]byte("\x00"))
-		stream.Close()
-	}
-	return
-}
-
 func main() {
 	tunnelAddr := flag.String("tunnel", "127.0.0.1:443", "The host:port address of the server")
 	flag.Parse()
+
+	config := yamux.DefaultConfig()
 
 	for {
 		// Connect TLS socket wrapped with yamux
@@ -46,14 +36,11 @@ func main() {
 			log.Println("[ERR] Error connecting tunnel: " + err.Error())
 			return
 		}
-		session, err := yamux.Client(conn, nil)
+		session, err := yamux.Client(conn, config)
 		if err != nil {
 			log.Println(err)
 			return
 		}
-
-		//Run goroutine that sends keepalives once per minute
-		go SendKeepalives(session)
 
 		// Accept new streams and pass them to a goroutine
 		for {
