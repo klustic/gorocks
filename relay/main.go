@@ -2,9 +2,10 @@ package main
 
 import (
 	"crypto/tls"
-  "flag"
+	"flag"
 	"log"
 	"net"
+	"time"
 
 	socks5 "github.com/armon/go-socks5"
 	yamux "github.com/hashicorp/yamux"
@@ -23,9 +24,20 @@ func connectTunnel(serverHost string) (conn net.Conn, err error) {
 	return
 }
 
+func SendKeepalives(session *yamux.Session) {
+	duration, _ := time.ParseDuration("1m")
+	for {
+		time.Sleep(duration)
+		stream, _ := session.Open()
+		stream.Write([]byte("\x00"))
+		stream.Close()
+	}
+	return
+}
+
 func main() {
-  tunnelAddr := flag.String("tunnel", "127.0.0.1:443", "The host:port address of the server")
-  flag.Parse()
+	tunnelAddr := flag.String("tunnel", "127.0.0.1:443", "The host:port address of the server")
+	flag.Parse()
 
 	for {
 		// Connect TLS socket wrapped with yamux
@@ -39,6 +51,9 @@ func main() {
 			log.Println(err)
 			return
 		}
+
+		//Run goroutine that sends keepalives once per minute
+		go SendKeepalives(session)
 
 		// Accept new streams and pass them to a goroutine
 		for {
