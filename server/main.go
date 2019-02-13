@@ -2,7 +2,7 @@ package main
 
 import (
 	"crypto/tls"
-  "flag"
+	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -44,7 +44,7 @@ func HandleStats(session *yamux.Session, statPath string) {
 		fd, err := l.Accept()
 		if err != nil {
 			fmt.Println("[ERR] Error accepting on Unix socket: " + err.Error())
-				return
+			return
 		}
 
 		NumStreams := session.NumStreams()
@@ -92,17 +92,17 @@ func handleConnection(conn net.Conn, socksHost string) {
 			log.Println("[+] Error opening new stream in tunnel: " + err.Error())
 			return
 		}
-		go utils.PerformProxy(client, stream)
+		go utils.Proxy(client, stream)
 	}
 	return
 }
 
 func main() {
-  tunnelAddress := flag.String("tunnel", "0.0.0.0:443", "The bind address on which to accept tunnel connections")
-  socksAddress := flag.String("socks", "127.0.0.1:1080", "The bind address on which to accept SOCKSv5 clients")
-  certFile := flag.String("cert", "server.crt", "A file containing a TLS certificate")
-  keyFile := flag.String("key", "server.key", "A file containing a TLS key")
-  flag.Parse()
+	tunnelAddress := flag.String("tunnel", "0.0.0.0:443", "The bind address on which to accept tunnel connections")
+	socksAddress := flag.String("socks", "127.0.0.1:1080", "The bind address on which to accept SOCKSv5 clients")
+	certFile := flag.String("cert", "server.crt", "A file containing a TLS certificate")
+	keyFile := flag.String("key", "server.key", "A file containing a TLS key")
+	flag.Parse()
 
 	server, err := createTunnelServer(*certFile, *keyFile, *tunnelAddress)
 	if err != nil {
