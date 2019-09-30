@@ -7,21 +7,20 @@ import (
 )
 
 func Proxy(c1 net.Conn, c2 net.Conn) {
-	defer c1.Close()
-	defer c2.Close()
-
 	var wg sync.WaitGroup
-	wg.Add(2)
 
-	go func() {
-		io.Copy(c1, c2)
+	intProxy := func(a net.Conn, b net.Conn) {
+		defer a.Close()
+		defer b.Close()
+		io.Copy(a, b)
 		wg.Done()
-	}()
+	}
 
-	go func() {
-		io.Copy(c2, c1)
-		wg.Done()
-	}()
+	go intProxy(c1, c2)
+	wg.Add(1)
+
+	go intProxy(c2, c1)
+	wg.Add(1)
 
 	wg.Wait()
 
