@@ -3,26 +3,38 @@ package utils
 import (
 	"io"
 	"net"
-	"sync"
 )
 
-func Proxy(c1 net.Conn, c2 net.Conn) {
-	var wg sync.WaitGroup
+type closeWriter interface {
+	CloseWrite() error
+}
 
-	intProxy := func(a net.Conn, b net.Conn) {
-		defer a.Close()
-		defer b.Close()
-		io.Copy(a, b)
-		wg.Done()
+func Proxy(dst net.Conn, src net.Conn) error {
+	// Modified from github.com/armon/go-socks5/request.go
+	defer dst.Close()
+	defer src.Close()
+
+	errCh := make(chan error, 2)
+
+	_proxy := func(a io.Writer, b io.Reader) {
+		_, err := io.Copy(a, b)
+		if tcpConn, ok := a.(closeWriter); ok {
+			tcpConn.CloseWrite()
+		}
+		errCh <- err
 	}
 
-	go intProxy(c1, c2)
-	wg.Add(1)
+	// Start proxying
+	go _proxy(dst, src)
+	go _proxy(src, dst)
 
-	go intProxy(c2, c1)
-	wg.Add(1)
+	// Wait
+	for i := 0; i < 2; i++ {
+		e := <-errCh
+		if e != nil {
+			return e
+		}
+	}
 
-	wg.Wait()
-
-	return
+	return nil
 }

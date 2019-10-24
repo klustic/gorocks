@@ -55,7 +55,6 @@ func HandleStats(session *yamux.Session, statPath string) {
 		fd.Write([]byte(msg))
 		fd.Close()
 	}
-	return
 }
 
 func handleConnection(conn net.Conn, socksHost string) {
@@ -94,7 +93,6 @@ func handleConnection(conn net.Conn, socksHost string) {
 		}
 		go utils.Proxy(client, stream)
 	}
-	return
 }
 
 func main() {
